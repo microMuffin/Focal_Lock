@@ -15,7 +15,7 @@
 bl_info = {
     "name": "Focal Lock",
     "description": "Locks object in a camera's plane of focus",
-    "author": "Anson <https://www.artstation.com/ansonsavage>",
+    "author": "Anson <https://www.artstation.com/ansonsavage>, Nathan Craddock",
     "version": (1, 0),
     "blender": (2, 93, 0),
     "location": "View 3D > Properties Panel > Camera",
