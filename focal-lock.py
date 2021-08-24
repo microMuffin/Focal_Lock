@@ -39,7 +39,7 @@ def distance_to_plane(ob):
     context = bpy.context
     scene = context.scene
     cam = scene.camera
-
+    # Special thanks to batFINGER's answer here: https://blender.stackexchange.com/questions/231817/how-to-obtain-the-vector-normal-to-the-camera-plane
     cam_axis = cam.matrix_world.to_3x3().normalized().col[2]
     cam_axis.negate()
     cam_loc = cam.matrix_world.translation
