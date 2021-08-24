@@ -200,7 +200,7 @@ class FocalLockSettings(PropertyGroup):
         )
     enable_track: BoolProperty(
         name= "Track camera to object",
-        description= "Add a tracking constraing to camera so it always stays focussed on the object",
+        description= "Add a tracking constraint to camera so it always stays focussed on the object",
         default = False,
         update = update_enable_track
         )
