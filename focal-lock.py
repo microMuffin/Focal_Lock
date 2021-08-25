@@ -19,8 +19,8 @@ bl_info = {
     "version": (1, 0),
     "blender": (2, 93, 0),
     "location": "View 3D > Properties Panel > Camera",
-    "doc_url": "",
-    "tracker_url": "",
+    "doc_url": "https://github.com/AnsonSavage/Focal_Lock/wiki",
+    "tracker_url": "https://github.com/AnsonSavage/Focal_Lock/issues",
     "support": "COMMUNITY",
     "category": "Camera",
     }
