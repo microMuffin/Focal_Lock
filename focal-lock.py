@@ -15,7 +15,7 @@
 bl_info = {
     "name": "Focal Lock",
     "description": "Locks object in a camera's plane of focus",
-    "author": "Anson Savage <https://www.artstation.com/ansonsavage>, Nathan Craddock <http://nathancraddock.com/>",
+    "author": "Anson Savage <artstation.com/ansonsavage>, Nathan Craddock <nathancraddock.com>",
     "version": (1, 0),
     "blender": (2, 93, 0),
     "location": "View 3D > Properties Panel > Camera",
@@ -31,6 +31,7 @@ from mathutils import Vector
 import bpy
 from bpy.props import BoolProperty, FloatProperty, PointerProperty
 from bpy.types import Panel, PropertyGroup, Operator, Object
+from bpy.app.handlers import persistent
 
 
 #HELPER FUNCTIONS
@@ -80,6 +81,7 @@ def update_enable_track(self, context):
     else:
         bpy.ops.constraint.delete(constraint="Track To", owner='OBJECT')
 
+@persistent
 def update_focal_length(self, context):
     # for each camera with focal_lock enabled...
     for camera in bpy.data.cameras:
@@ -231,28 +233,24 @@ classes = (
 register, unregister = bpy.utils.register_classes_factory(classes)
 
 
-# Register
+handlers = [bpy.app.handlers.depsgraph_update_post, bpy.app.handlers.frame_change_post, bpy.app.handlers.load_post]
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.Camera.focal_lock = bpy.props.PointerProperty(type=FocalLockSettings)
-    #WATCHER HANDLERS
-    post_handlers = bpy.app.handlers.depsgraph_update_post
-    [post_handlers.remove(h) for h in post_handlers if h.__name__ == "update_focal_length"]
-    post_handlers.append(update_focal_length)
 
-    frame_handlers = bpy.app.handlers.frame_change_post
-    [frame_handlers.remove(h) for h in frame_handlers if h.__name__ == "update_focal_length"]
-    frame_handlers.append(update_focal_length)
+    for handler in handlers:
+        [handler.remove(h) for h in handler if h.__name__ == "update_focal_length"]
+        handler.append(update_focal_length)
 
-
-# Unregister
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
     del bpy.types.Camera.focal_lock
-    [post_handlers.remove(h) for h in post_handlers if h.__name__ == "update_focal_length"]
-    [frame_handlers.remove(h) for h in frame_handlers if h.__name__ == "update_focal_length"]
+
+
+    for handler in handlers:
+        [handler.remove(h) for h in handler if h.__name__ == "update_focal_length"]
 
 if __name__ == "__main__":
     register()
