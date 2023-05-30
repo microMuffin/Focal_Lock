@@ -198,8 +198,8 @@ class FocalLockSettings(PropertyGroup):
     focal_distance_offset: FloatProperty(
         name = "Focal Distance Offset",
         description= "Fine tune the focal length without moving the camera or focus object",
-        soft_min = -1,
-        soft_max = 1
+        soft_min = -5,
+        soft_max = 5
         )
     focal_distance_ratio: FloatProperty(
         name = "Focal Distance Ratio",
