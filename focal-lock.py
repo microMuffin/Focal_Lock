@@ -16,8 +16,8 @@ bl_info = {
     "name": "Focal Lock",
     "description": "Locks object in a camera's plane of focus",
     "author": "Anson Savage <artstation.com/ansonsavage>, Nathan Craddock <nathancraddock.com>",
-    "version": (1, 0),
-    "blender": (2, 93, 0),
+    "version": (2, 0),
+    "blender": (3, 5, 0),
     "location": "View 3D > Properties Panel > Camera",
     "doc_url": "https://github.com/AnsonSavage/Focal_Lock/wiki",
     "tracker_url": "https://github.com/AnsonSavage/Focal_Lock/issues",
@@ -52,48 +52,47 @@ def distance_to_plane(ob):
 #WATCHER FUNCTIONS
 ############################################################################
 def update_focus_object(self, context):
+    """Updates the focus object when the user changes the the focus object with the eyedropper"""
+
     settings = context.object.data.focal_lock
-    update_enable_lock(self, context) #run this so that all the original settings are made again
-    #here's where all the code should go when the focus object is updated!
+    update_enable_lock(self, context) # Set all the necessary initial settings
     if settings.enable_track:
         bpy.context.object.constraints["Track To"].target = settings.focus_object
 
-# There is a bug here - when you enable the focus lock without having an object selected for
-# tracking settings.focus_object is None. Shouldn't be too hard to fix though, just don't
-# do anything when it is None :)
 def update_enable_lock(self, context):
+    """Sets the original focal length and distance when the user enables the focal lock"""
+
     settings = context.object.data.focal_lock
     enable_lock = settings.enable_lock
     if enable_lock and settings.focus_object != None:
-        #Set original focal length
-        settings.original_focal_length = context.camera.lens #okay, figure out how to make this apply to just our camear
-        #set current distance
+        # Set persistent properties
+        settings.original_focal_length = context.camera.lens
         settings.original_distance = distance_to_plane(settings.focus_object)
         settings.focal_distance_ratio = settings.original_focal_length / settings.original_distance
 
 def update_enable_track(self, context):
-    settings = context.object.data.focal_lock
+    """Adds or removes a track to constraint to the camera based on the enable_track property"""
 
-    # because you are only accessing enable_track once, no need to store in variable
+    settings = context.object.data.focal_lock
     if settings.enable_track:
         bpy.ops.object.constraint_add(type='TRACK_TO')
         bpy.context.object.constraints["Track To"].target = settings.focus_object
     else:
         bpy.ops.constraint.delete(constraint="Track To", owner='OBJECT')
 
-@persistent
+@persistent # This decorator makes sure that the handler is still installed each time the scene is reloaded
 def update_focal_length(self, context):
+    """Updates the focal length of the each camera with focal lock based on the distance to the focus object"""
     # for each camera with focal_lock enabled...
     for camera in bpy.data.cameras:
         if camera.focal_lock.enable_lock and camera.focal_lock.focus_object != None:
             currentDistance = distance_to_plane(camera.focal_lock.focus_object)
-            camera.lens = currentDistance * (camera.focal_lock.focal_distance_ratio)
-            #bpy.context.scene.camera.lens = currentDistance * (bpy.context.scene.camera_settings.focal_distance_ratio)
-
+            camera.lens = currentDistance * (camera.focal_lock.focal_distance_ratio) # Set the new focal length to maintain the focal_distance_ratio
 
 #OPERATORS
 ############################################################################
 class BakeFocalLength(bpy.types.Operator):
+    """Bake focal length to keyframes for active camera"""
     bl_idname = "wm.bake_focal_length"
     bl_label = "Bake Focal Length"
     def execute(self, context):
@@ -106,6 +105,7 @@ class BakeFocalLength(bpy.types.Operator):
         return {'FINISHED'}
 
 class ClearBakeFocalLength(bpy.types.Operator):
+    """Clear baked focal length keyframes for active camera"""
     bl_idname = "wm.clear_bake_focal_length"
     bl_label = "Clear Bake"
     def execute(self, context):
@@ -162,7 +162,6 @@ class FOCALLOCK_PT_FocalLock(Panel):
         sub.prop(cam, 'lens', text="Focal Length")
 
 class FOCALLOCK_PT_BakeSettings(Panel):
-    #COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
     bl_category = "Baking"
     bl_label = "Baking"
     bl_parent_id = "FOCALLOCK_PT_FocalLock"
@@ -186,9 +185,6 @@ class FOCALLOCK_PT_BakeSettings(Panel):
 #PROPERTIES
 ############################################################################
 class FocalLockSettings(PropertyGroup):
-    # These "original" properties aren't ever exposed to the UI.
-    # It's not a huge thing, but there is another way to store this without the overhead
-    # of making a FloatProperty.
     original_distance: FloatProperty(
         name = "Original Distance",
         description = "This is the distance that the camera originally was from the focus object",
@@ -196,6 +192,10 @@ class FocalLockSettings(PropertyGroup):
     original_focal_length: FloatProperty(
         name = "Original Focal Length",
         description= "The focal length when the user clicked enabled",
+        )
+    focal_distance_offset: FloatProperty(
+        name = "Focal Distance Offset",
+        description= "Fine tune the focal length without moving the camera or focus object",
         )
     focal_distance_ratio: FloatProperty(
         name = "Focal Distance Ratio",
@@ -232,8 +232,12 @@ classes = (
 
 register, unregister = bpy.utils.register_classes_factory(classes)
 
-
+# depsgraph_update_post is called when the scene is updated
+# frame_change_post is called when the frame is changed
+# load_post is called when the file is loaded
 handlers = [bpy.app.handlers.depsgraph_update_post, bpy.app.handlers.frame_change_post, bpy.app.handlers.load_post]
+
+# Register and unregister the data classes
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
