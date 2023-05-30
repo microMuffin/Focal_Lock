@@ -87,7 +87,7 @@ def update_focal_length(self, context):
     for camera in bpy.data.cameras:
         if camera.focal_lock.enable_lock and camera.focal_lock.focus_object != None:
             currentDistance = distance_to_plane(camera.focal_lock.focus_object)
-            camera.lens = currentDistance * (camera.focal_lock.focal_distance_ratio) # Set the new focal length to maintain the focal_distance_ratio
+            camera.lens = currentDistance * (camera.focal_lock.focal_distance_ratio) + camera.focal_lock.focal_distance_offset # Set the new focal length to maintain the focal_distance_ratio
 
 #OPERATORS
 ############################################################################
@@ -153,6 +153,8 @@ class FOCALLOCK_PT_FocalLock(Panel):
         #Property to set the focus object
         col.prop(settings, "focus_object", text="Focus Object")
 
+        col.prop(settings, 'focal_distance_offset', text="Focal Distance Offset")
+
         # Mechanics
         col = flow.column()
         #col.prop(settings, 'enable_lock')
@@ -196,6 +198,8 @@ class FocalLockSettings(PropertyGroup):
     focal_distance_offset: FloatProperty(
         name = "Focal Distance Offset",
         description= "Fine tune the focal length without moving the camera or focus object",
+        soft_min = -1,
+        soft_max = 1
         )
     focal_distance_ratio: FloatProperty(
         name = "Focal Distance Ratio",
