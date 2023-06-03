@@ -14,12 +14,18 @@ def computeForwardVector(rotation):
     # Convert the rotation to radians
     rotation = [math.radians(x) for x in rotation]
 
-    # Calculate the forward direction vector
-    forwardVector = [math.cos(rotation[1])*math.cos(rotation[0]), math.sin(rotation[0]), math.cos(rotation[1])*math.sin(rotation[0])]
+    # Calculate the forward direction vector based on Maya's default orientation
+    forwardVector = [
+        -math.sin(rotation[1])*math.cos(rotation[0]), 
+        math.sin(rotation[0]), 
+        -math.cos(rotation[1])*math.cos(rotation[0])
+    ]
 
     return forwardVector
 
 def computeFocalLengthRatio(cam, obj):
+    if not cam or not obj:
+        return
     if not cmds.objExists(cam) or not cmds.objExists(obj):
         print("Camera or object does not exist.")
         return
@@ -38,6 +44,8 @@ def computeFocalLengthRatio(cam, obj):
     vec = [objPos[0] - camPos[0], objPos[1] - camPos[1], objPos[2] - camPos[2]]
 
     # calculate the dot product of vec and forwardVector
+    print(vec)
+    print(forwardVector)
     actualDist = dotProduct(vec, forwardVector)
 
     # get the current camera's focal length
@@ -48,6 +56,8 @@ def computeFocalLengthRatio(cam, obj):
     focalLengthRatio = currentFocalLength / actualDist
 
 def maintainFocalLengthRatio(cam, obj):
+    if not cam or not obj:
+        return
     if not cmds.objExists(cam) or not cmds.objExists(obj):
         print("Camera or object does not exist.")
         return
@@ -121,7 +131,7 @@ def populateCameraMenu():
 def onCameraCreation(*args):
     """ Callback function for the camera creation. """
     populateCameraMenu()
-    onObjectChanged()
+    onObjectChanged(None)
 
 def populateObjectMenu():
     # Get currently selected menu item
@@ -129,6 +139,7 @@ def populateObjectMenu():
 
     # Clear the existing menu items
     cmds.optionMenu(objectMenu, edit=True, deleteAllItems=True)
+    print("All objects deleted from list!")
 
     # Get list of new objects
     shapeNodes = cmds.ls(dag=True, leaf=True, noIntermediate=True, shapes=True)
@@ -146,7 +157,7 @@ def populateObjectMenu():
 def onObjectCreation(*args):
     """ Callback function for the object creation. """
     populateObjectMenu()
-    onObjectChanged()
+    onObjectChanged(None)
 
 def onWindowClose(killOnClose=True):
     """ Callback function for window close. """
