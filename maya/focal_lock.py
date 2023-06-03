@@ -9,7 +9,6 @@ def computeFocalLengthRatio(cam, obj):
         print("Camera or object does not exist.")
         return
 
-    print(obj)
     # get current position of obj
     objPos = cmds.xform(obj, q=True, t=True, ws=True)
 
@@ -24,6 +23,7 @@ def computeFocalLengthRatio(cam, obj):
 
     # get the current camera's focal length
     currentFocalLength = cmds.getAttr(cam + '.focalLength')
+    print(currentFocalLength)
 
     # calculate the focal length ratio
     global focalLengthRatio
@@ -48,6 +48,7 @@ def maintainFocalLengthRatio(cam, obj):
 
     # adjust camera focal length based on the distance and the desired ratio
     newFocalLength = actualDist * focalLengthRatio
+    print("New focal length:", newFocalLength)
     cmds.setAttr(cam + '.focalLength', newFocalLength)
 
 def onObjectChanged(*args):
@@ -59,22 +60,6 @@ def onObjectChanged(*args):
     if scriptJobId:
         cmds.scriptJob(kill=scriptJobId, force=True)
         scriptJobId = cmds.scriptJob(e=("idle", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
-
-# def onEnableLockChanged(*args):
-#     """ Callback function for the lock checkbox. """
-#     global lockId, focalLengthRatio
-
-    if cmds.checkBox(lockCheckBox, query=True, value=True):
-        cam = cmds.optionMenu(cameraMenu, query=True, value=True)
-        obj = cmds.optionMenu(objectMenu, query=True, value=True)
-
-        # check if cam or obj is None or invalid
-        if not cam or not obj or not cmds.objExists(cam) or not cmds.objExists(obj):
-            cmds.warning("Invalid camera or object selected.")
-            cmds.checkBox(lockCheckBox, edit=True, value=False)  # uncheck the checkbox
-            return
-        
-        # further operations with cam and obj...
 
 def onFocalLockChanged(enabled):
     """ Callback function for the focal lock checkbox change. """
@@ -97,7 +82,7 @@ def onFocalLockChanged(enabled):
 def onWindowClose(killOnClose=True):
     """ Callback function for window close. """
     global scriptJobId
-    if scriptJobId and killOnClose:
+    if scriptJobId and cmds.control(killOnCloseCheckbox, exists=True) and cmds.checkBox(killOnCloseCheckbox, query=True, value=True): 
         # Kill the script job
         cmds.scriptJob(kill=scriptJobId, force=True)
         scriptJobId = None
