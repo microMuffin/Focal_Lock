@@ -4,6 +4,7 @@ import math
 # Maintain a script job ID
 scriptJobId = None
 objectCreationJobId = None
+cameraCreationJobId = None
 focalLengthRatio = 1.0
 # add these function to calculate the dot product and the forward vector
 def dotProduct(v1, v2):
@@ -46,7 +47,6 @@ def computeFocalLengthRatio(cam, obj):
     global focalLengthRatio
     focalLengthRatio = currentFocalLength / actualDist
 
-# similarly, update maintainFocalLengthRatio function
 def maintainFocalLengthRatio(cam, obj):
     if not cmds.objExists(cam) or not cmds.objExists(obj):
         print("Camera or object does not exist.")
@@ -99,6 +99,29 @@ def onFocalLockChanged(enabled):
         if scriptJobId:
             cmds.scriptJob(kill=scriptJobId, force=True)
             scriptJobId = None
+def populateCameraMenu():
+    # Get currently selected menu item
+    selectedCam = cmds.optionMenu(cameraMenu, query=True, value=True)
+
+    # Clear the existing menu items
+    cmds.optionMenu(cameraMenu, edit=True, deleteAllItems=True)
+
+    # Get list of new cameras
+    cameraShapeList = cmds.ls(cameras=True)
+    cameraList = cmds.listRelatives(cameraShapeList, parent=True)
+
+    # Add new cameras to menu
+    for cam in cameraList:
+        cmds.menuItem(label=cam)
+
+    # If previously selected camera still exists, re-select it
+    if selectedCam and cmds.objExists(selectedCam):
+        cmds.optionMenu(cameraMenu, edit=True, value=selectedCam)
+
+def onCameraCreation(*args):
+    """ Callback function for the camera creation. """
+    populateCameraMenu()
+    onObjectChanged()
 
 def populateObjectMenu():
     # Get currently selected menu item
@@ -143,8 +166,7 @@ cameraList = cmds.listRelatives(cameraShapeList, parent=True)
 # Create the user interface elements
 cmds.text(label='Camera:')
 cameraMenu = cmds.optionMenu(changeCommand=onObjectChanged)
-for cam in cameraList:
-    cmds.menuItem(label=cam)
+populateCameraMenu()
 
 cmds.text(label='Target Object:')
 objectMenu = cmds.optionMenu(changeCommand=onObjectChanged)
@@ -161,3 +183,5 @@ cmds.scriptJob(uiDeleted=(window, onWindowClose))
 
 # Create a script job that triggers when a new object is created
 objectCreationJobId = cmds.scriptJob(e=("DagObjectCreated", onObjectCreation), protected=True)
+# Create a script job that triggers when a new camera is created
+cameraCreationJobId = cmds.scriptJob(e=("DagObjectCreated", onCameraCreation), protected=True)
