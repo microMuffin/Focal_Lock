@@ -1,8 +1,22 @@
 import maya.cmds as cmds
+import math
 
 # Maintain a script job ID
 scriptJobId = None
+objectCreationJobId = None
 focalLengthRatio = 1.0
+# add these function to calculate the dot product and the forward vector
+def dotProduct(v1, v2):
+    return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]
+
+def computeForwardVector(rotation):
+    # Convert the rotation to radians
+    rotation = [math.radians(x) for x in rotation]
+
+    # Calculate the forward direction vector
+    forwardVector = [math.cos(rotation[1])*math.cos(rotation[0]), math.sin(rotation[0]), math.cos(rotation[1])*math.sin(rotation[0])]
+
+    return forwardVector
 
 def computeFocalLengthRatio(cam, obj):
     if not cmds.objExists(cam) or not cmds.objExists(obj):
@@ -12,23 +26,27 @@ def computeFocalLengthRatio(cam, obj):
     # get current position of obj
     objPos = cmds.xform(obj, q=True, t=True, ws=True)
 
-    # get current position of camera
+    # get current position and rotation of camera
     camPos = cmds.xform(cam, q=True, t=True, ws=True)
+    camRot = cmds.xform(cam, q=True, rotation=True)
+
+    # calculate the forward direction vector of the camera
+    forwardVector = computeForwardVector(camRot)
 
     # calculate vector from cam to obj
     vec = [objPos[0] - camPos[0], objPos[1] - camPos[1], objPos[2] - camPos[2]]
 
-    # calculate actual distance
-    actualDist = (vec[0]**2 + vec[1]**2 + vec[2]**2)**0.5
+    # calculate the dot product of vec and forwardVector
+    actualDist = dotProduct(vec, forwardVector)
 
     # get the current camera's focal length
     currentFocalLength = cmds.getAttr(cam + '.focalLength')
-    print(currentFocalLength)
 
     # calculate the focal length ratio
     global focalLengthRatio
     focalLengthRatio = currentFocalLength / actualDist
 
+# similarly, update maintainFocalLengthRatio function
 def maintainFocalLengthRatio(cam, obj):
     if not cmds.objExists(cam) or not cmds.objExists(obj):
         print("Camera or object does not exist.")
@@ -37,18 +55,21 @@ def maintainFocalLengthRatio(cam, obj):
     # get current position of obj
     objPos = cmds.xform(obj, q=True, t=True, ws=True)
 
-    # get current position of camera
+    # get current position and rotation of camera
     camPos = cmds.xform(cam, q=True, t=True, ws=True)
+    camRot = cmds.xform(cam, q=True, rotation=True)
+
+    # calculate the forward direction vector of the camera
+    forwardVector = computeForwardVector(camRot)
 
     # calculate vector from cam to obj
     vec = [objPos[0] - camPos[0], objPos[1] - camPos[1], objPos[2] - camPos[2]]
 
-    # calculate actual distance
-    actualDist = (vec[0]**2 + vec[1]**2 + vec[2]**2)**0.5
+    # calculate the dot product of vec and forwardVector
+    actualDist = dotProduct(vec, forwardVector)
 
     # adjust camera focal length based on the distance and the desired ratio
     newFocalLength = actualDist * focalLengthRatio
-    print("New focal length:", newFocalLength)
     cmds.setAttr(cam + '.focalLength', newFocalLength)
 
 def onObjectChanged(*args):
@@ -79,6 +100,31 @@ def onFocalLockChanged(enabled):
             cmds.scriptJob(kill=scriptJobId, force=True)
             scriptJobId = None
 
+def populateObjectMenu():
+    # Get currently selected menu item
+    selectedObj = cmds.optionMenu(objectMenu, query=True, value=True)
+
+    # Clear the existing menu items
+    cmds.optionMenu(objectMenu, edit=True, deleteAllItems=True)
+
+    # Get list of new objects
+    shapeNodes = cmds.ls(dag=True, leaf=True, noIntermediate=True, shapes=True)
+    shapeNodes = [shapeNode for shapeNode in shapeNodes if shapeNode not in cameraShapeList] # Exclude cameras from the list
+    transformNodes = cmds.listRelatives(shapeNodes, parent=True, fullPath=True) # Get parent transform nodes
+
+    # Add new objects to menu
+    for node in transformNodes:
+        cmds.menuItem(label=node)
+
+    # If previously selected object still exists, re-select it
+    if selectedObj and cmds.objExists(selectedObj):
+        cmds.optionMenu(objectMenu, edit=True, value=selectedObj)
+
+def onObjectCreation(*args):
+    """ Callback function for the object creation. """
+    populateObjectMenu()
+    onObjectChanged()
+
 def onWindowClose(killOnClose=True):
     """ Callback function for window close. """
     global scriptJobId
@@ -102,11 +148,7 @@ for cam in cameraList:
 
 cmds.text(label='Target Object:')
 objectMenu = cmds.optionMenu(changeCommand=onObjectChanged)
-shapeNodes = cmds.ls(dag=True, leaf=True, noIntermediate=True, shapes=True)
-transformNodes = cmds.listRelatives(shapeNodes, parent=True, fullPath=True) # Get parent transform nodes
-transformNodes = [node for node in transformNodes if node not in cameraList] # Exclude camera transform nodes from this list
-for node in transformNodes:
-    cmds.menuItem(label=node)
+populateObjectMenu()
 
 focalLockCheckbox = cmds.checkBox(label='Lock Focal Length', changeCommand=onFocalLockChanged)
 killOnCloseCheckbox = cmds.checkBox(label='Kill on Close', value=True)
@@ -116,3 +158,6 @@ cmds.showWindow(window)
 
 # Create a script job that triggers when the window is deleted
 cmds.scriptJob(uiDeleted=(window, onWindowClose))
+
+# Create a script job that triggers when a new object is created
+objectCreationJobId = cmds.scriptJob(e=("DagObjectCreated", onObjectCreation), protected=True)
