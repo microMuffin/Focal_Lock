@@ -6,6 +6,8 @@ scriptJobId = None
 objectCreationJobId = None
 cameraCreationJobId = None
 focalLengthRatio = 1.0
+adjustingListSemaphore = False
+
 # add these function to calculate the dot product and the forward vector
 def dotProduct(v1, v2):
     return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]
@@ -109,6 +111,7 @@ def onFocalLockChanged(enabled):
         if scriptJobId:
             cmds.scriptJob(kill=scriptJobId, force=True)
             scriptJobId = None
+
 def populateCameraMenu():
     # Get currently selected menu item
     selectedCam = cmds.optionMenu(cameraMenu, query=True, value=True)
