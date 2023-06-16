@@ -120,6 +120,8 @@ def onFocalLockChanged(enabled):
     """ Callback function for the focal lock checkbox change. """
     logger.info('Entered onFocalLockChanged function')
     global scriptJobId
+    global objectCreationJobId
+    global cameraCreationJobId
     if enabled:
         cam = cmds.optionMenu(cameraMenu, query=True, value=True)
         obj = cmds.optionMenu(objectMenu, query=True, value=True)
@@ -129,11 +131,12 @@ def onFocalLockChanged(enabled):
             return
         computeFocalLengthRatio(cam, obj)
         scriptJobId = cmds.scriptJob(e=("idle", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
+        objectCreationJobId = cmds.scriptJob(e=("DagObjectCreated", onObjectCreation), protected=True)
+        cameraCreationJobId = cmds.scriptJob(e=("DagObjectCreated", onCameraCreation), protected=True)
     else:
         # Kill the script job
         if scriptJobId:
-            cmds.scriptJob(kill=scriptJobId, force=True)
-            scriptJobId = None
+            cleanUpScriptJobIds()
     logger.info('Exiting onFocalLockChanged function')
 
 def populateCameraMenu():
@@ -201,9 +204,7 @@ def onWindowClose(killOnClose=True):
     logger.info('Entered onWindowClose function')
     global scriptJobId
     if scriptJobId and cmds.control(killOnCloseCheckbox, exists=True) and cmds.checkBox(killOnCloseCheckbox, query=True, value=True): 
-        # Kill the script job
-        cmds.scriptJob(kill=scriptJobId, force=True)
-        scriptJobId = None
+        cleanUpScriptJobIds()
     logger.info('Exiting onWindowClose function')
 
 # Create the window
