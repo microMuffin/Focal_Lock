@@ -18,14 +18,19 @@ focalLengthRatio = 1.0
 adjustingListSemaphore = False
 
 def cleanUpScriptJobIds():
-    cmds.scriptJob(kill=scriptJobId, force=True)
-    scriptJobId = None
+    global scriptJobId, objectCreationJobId, cameraCreationJobId
 
-    cmds.scriptJob(kill=objectCreationJobId, force=True)
-    objectCreationJobId = None
+    if scriptJobId is not None:
+        cmds.scriptJob(kill=scriptJobId, force=True)
+        scriptJobId = None
 
-    cmds.scriptJob(kill=cameraCreationJobId, force=True)
-    cameraCreationJobId = None
+    if objectCreationJobId is not None:
+        cmds.scriptJob(kill=objectCreationJobId, force=True)
+        objectCreationJobId = None
+
+    if cameraCreationJobId is not None:
+        cmds.scriptJob(kill=cameraCreationJobId, force=True)
+        cameraCreationJobId = None
 
 # add these function to calculate the dot product and the forward vector
 def dotProduct(v1, v2):
