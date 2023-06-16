@@ -149,13 +149,14 @@ def populateObjectMenu():
     shapeNodes = [shapeNode for shapeNode in shapeNodes if shapeNode not in cameraShapeList] # Exclude cameras from the list
     transformNodes = cmds.listRelatives(shapeNodes, parent=True, fullPath=True) # Get parent transform nodes
 
-    # Add new objects to menu
-    for node in transformNodes:
-        cmds.menuItem(label=node)
+    if transformNodes is not None:
+        # Add new objects to menu
+        for node in transformNodes:
+            cmds.menuItem(label=node)
 
-    # If previously selected object still exists, re-select it
-    if selectedObj and cmds.objExists(selectedObj):
-        cmds.optionMenu(objectMenu, edit=True, value=selectedObj)
+        # If previously selected object still exists, re-select it
+        if selectedObj and cmds.objExists(selectedObj):
+            cmds.optionMenu(objectMenu, edit=True, value=selectedObj)
 
 def onObjectCreation(*args):
     """ Callback function for the object creation. """
