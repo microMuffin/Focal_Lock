@@ -1,5 +1,14 @@
 import maya.cmds as cmds
 import math
+import logging
+
+# Setup logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 # Maintain a script job ID
 scriptJobId = None
@@ -7,6 +16,16 @@ objectCreationJobId = None
 cameraCreationJobId = None
 focalLengthRatio = 1.0
 adjustingListSemaphore = False
+
+def cleanUpScriptJobIds():
+    cmds.scriptJob(kill=scriptJobId, force=True)
+    scriptJobId = None
+
+    cmds.scriptJob(kill=objectCreationJobId, force=True)
+    objectCreationJobId = None
+
+    cmds.scriptJob(kill=cameraCreationJobId, force=True)
+    cameraCreationJobId = None
 
 # add these function to calculate the dot product and the forward vector
 def dotProduct(v1, v2):
@@ -86,6 +105,7 @@ def maintainFocalLengthRatio(cam, obj):
 
 def onObjectChanged(*args):
     """ Callback function for the object dropdown menu change. """
+    logger.info('Entered onObjectChanged function')
     global scriptJobId
     cam = cmds.optionMenu(cameraMenu, query=True, value=True)
     obj = cmds.optionMenu(objectMenu, query=True, value=True)
@@ -93,9 +113,12 @@ def onObjectChanged(*args):
     if scriptJobId:
         cmds.scriptJob(kill=scriptJobId, force=True)
         scriptJobId = cmds.scriptJob(e=("idle", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
+    
+    logger.info('Exiting onObjectChanged function')
 
 def onFocalLockChanged(enabled):
     """ Callback function for the focal lock checkbox change. """
+    logger.info('Entered onFocalLockChanged function')
     global scriptJobId
     if enabled:
         cam = cmds.optionMenu(cameraMenu, query=True, value=True)
@@ -111,8 +134,10 @@ def onFocalLockChanged(enabled):
         if scriptJobId:
             cmds.scriptJob(kill=scriptJobId, force=True)
             scriptJobId = None
+    logger.info('Exiting onFocalLockChanged function')
 
 def populateCameraMenu():
+    logger.info('Entered populateCameraMenu function')
     # Get currently selected menu item
     selectedCam = cmds.optionMenu(cameraMenu, query=True, value=True)
 
@@ -130,15 +155,20 @@ def populateCameraMenu():
     # If previously selected camera still exists, re-select it
     if selectedCam and cmds.objExists(selectedCam):
         cmds.optionMenu(cameraMenu, edit=True, value=selectedCam)
+    logger.info('Exiting populateCameraMenu function')
 
 def onCameraCreation(*args):
     """ Callback function for the camera creation. """
+    logger.info('Entered onCameraCreation function')
     populateCameraMenu()
     onObjectChanged(None)
+    logger.info('Exiting onCameraCreation function')
 
 def populateObjectMenu():
     # Get currently selected menu item
+    logger.info('Entered populateObjectMenu function')
     selectedObj = cmds.optionMenu(objectMenu, query=True, value=True)
+    logger.info('Selected object: ' + str(selectedObj))
 
     # Clear the existing menu items
     cmds.optionMenu(objectMenu, edit=True, deleteAllItems=True)
@@ -157,19 +187,24 @@ def populateObjectMenu():
         # If previously selected object still exists, re-select it
         if selectedObj and cmds.objExists(selectedObj):
             cmds.optionMenu(objectMenu, edit=True, value=selectedObj)
+    logger.info('Exiting populateObjectMenu function')
 
 def onObjectCreation(*args):
     """ Callback function for the object creation. """
+    logger.info('Entered onObjectCreation function')
     populateObjectMenu()
     onObjectChanged(None)
+    logger.info('Exiting onObjectCreation function')
 
 def onWindowClose(killOnClose=True):
     """ Callback function for window close. """
+    logger.info('Entered onWindowClose function')
     global scriptJobId
     if scriptJobId and cmds.control(killOnCloseCheckbox, exists=True) and cmds.checkBox(killOnCloseCheckbox, query=True, value=True): 
         # Kill the script job
         cmds.scriptJob(kill=scriptJobId, force=True)
         scriptJobId = None
+    logger.info('Exiting onWindowClose function')
 
 # Create the window
 window = cmds.window(title="Focal Lock", widthHeight=(200, 100))
@@ -200,3 +235,4 @@ cmds.scriptJob(uiDeleted=(window, onWindowClose))
 objectCreationJobId = cmds.scriptJob(e=("DagObjectCreated", onObjectCreation), protected=True)
 # Create a script job that triggers when a new camera is created
 cameraCreationJobId = cmds.scriptJob(e=("DagObjectCreated", onCameraCreation), protected=True)
+logging.info('SCRIPT INITIALIZED\n\n')
