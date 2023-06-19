@@ -111,14 +111,16 @@ def maintainFocalLengthRatio(cam, obj):
 def onObjectChanged(*args):
     """ Callback function for the object dropdown menu change. """
     logger.info('Entered onObjectChanged function')
-    global scriptJobId
-    cam = cmds.optionMenu(cameraMenu, query=True, value=True)
-    obj = cmds.optionMenu(objectMenu, query=True, value=True)
-    computeFocalLengthRatio(cam, obj)
-    if scriptJobId:
-        cmds.scriptJob(kill=scriptJobId, force=True)
-        scriptJobId = cmds.scriptJob(e=("idle", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
-    
+    global adjustingListSemaphore
+    if not adjustingListSemaphore:
+        global scriptJobId
+        cam = cmds.optionMenu(cameraMenu, query=True, value=True)
+        obj = cmds.optionMenu(objectMenu, query=True, value=True)
+        computeFocalLengthRatio(cam, obj)
+        if scriptJobId:
+            cmds.scriptJob(kill=scriptJobId, force=True)
+            scriptJobId = cmds.scriptJob(e=("idle", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
+        
     logger.info('Exiting onObjectChanged function')
 
 def onFocalLockChanged(enabled):
@@ -146,6 +148,8 @@ def onFocalLockChanged(enabled):
 
 def populateCameraMenu():
     logger.info('Entered populateCameraMenu function')
+    global adjustingListSemaphore
+    adjustingListSemaphore = True
     # Get currently selected menu item
     selectedCam = cmds.optionMenu(cameraMenu, query=True, value=True)
 
@@ -163,6 +167,7 @@ def populateCameraMenu():
     # If previously selected camera still exists, re-select it
     if selectedCam and cmds.objExists(selectedCam):
         cmds.optionMenu(cameraMenu, edit=True, value=selectedCam)
+    adjustingListSemaphore = False
     logger.info('Exiting populateCameraMenu function')
 
 def onCameraCreation(*args):
@@ -174,6 +179,8 @@ def onCameraCreation(*args):
 
 def populateObjectMenu():
     # Get currently selected menu item
+    global adjustingListSemaphore
+    adjustingListSemaphore = True
     logger.info('Entered populateObjectMenu function')
     selectedObj = cmds.optionMenu(objectMenu, query=True, value=True)
     logger.info('Selected object: ' + str(selectedObj))
@@ -195,6 +202,7 @@ def populateObjectMenu():
         # If previously selected object still exists, re-select it
         if selectedObj and cmds.objExists(selectedObj):
             cmds.optionMenu(objectMenu, edit=True, value=selectedObj)
+    adjustingListSemaphore = False
     logger.info('Exiting populateObjectMenu function')
 
 def onObjectCreation(*args):
