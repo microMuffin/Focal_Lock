@@ -12,25 +12,13 @@ logger.addHandler(handler)
 
 # Maintain a script job ID
 scriptJobId = None
-objectCreationJobId = None
-cameraCreationJobId = None
 focalLengthRatio = 1.0
-adjustingListSemaphore = False
 
 def cleanUpScriptJobIds():
-    global scriptJobId, objectCreationJobId, cameraCreationJobId
-
+    global scriptJobId
     if scriptJobId is not None:
         cmds.scriptJob(kill=scriptJobId, force=True)
         scriptJobId = None
-
-    if objectCreationJobId is not None:
-        cmds.scriptJob(kill=objectCreationJobId, force=True)
-        objectCreationJobId = None
-
-    if cameraCreationJobId is not None:
-        cmds.scriptJob(kill=cameraCreationJobId, force=True)
-        cameraCreationJobId = None
 
 # add these function to calculate the dot product and the forward vector
 def dotProduct(v1, v2):
@@ -111,24 +99,23 @@ def maintainFocalLengthRatio(cam, obj):
 def onObjectChanged(*args):
     """ Callback function for the object dropdown menu change. """
     logger.info('Entered onObjectChanged function')
-    global adjustingListSemaphore
-    if not adjustingListSemaphore:
-        global scriptJobId
-        cam = cmds.optionMenu(cameraMenu, query=True, value=True)
-        obj = cmds.optionMenu(objectMenu, query=True, value=True)
+    global scriptJobId
+    cam = cmds.optionMenu(cameraMenu, query=True, value=True)
+    obj = cmds.optionMenu(objectMenu, query=True, value=True)
+    if cam is not None and obj is not None and cmds.objExists(cam) and cmds.objExists(obj):
         computeFocalLengthRatio(cam, obj)
         if scriptJobId:
             cmds.scriptJob(kill=scriptJobId, force=True)
             scriptJobId = cmds.scriptJob(e=("idle", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
-        
+    else:
+        logger.warning("Invalid camera or object selected.")
+            
     logger.info('Exiting onObjectChanged function')
 
 def onFocalLockChanged(enabled):
     """ Callback function for the focal lock checkbox change. """
     logger.info('Entered onFocalLockChanged function')
     global scriptJobId
-    global objectCreationJobId
-    global cameraCreationJobId
     if enabled:
         cam = cmds.optionMenu(cameraMenu, query=True, value=True)
         obj = cmds.optionMenu(objectMenu, query=True, value=True)
@@ -138,8 +125,6 @@ def onFocalLockChanged(enabled):
             return
         computeFocalLengthRatio(cam, obj)
         scriptJobId = cmds.scriptJob(e=("idle", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
-        objectCreationJobId = cmds.scriptJob(e=("DagObjectCreated", onObjectCreation), protected=True)
-        cameraCreationJobId = cmds.scriptJob(e=("DagObjectCreated", onCameraCreation), protected=True)
     else:
         # Kill the script job
         if scriptJobId:
@@ -148,10 +133,9 @@ def onFocalLockChanged(enabled):
 
 def populateCameraMenu():
     logger.info('Entered populateCameraMenu function')
-    global adjustingListSemaphore
-    adjustingListSemaphore = True
     # Get currently selected menu item
     selectedCam = cmds.optionMenu(cameraMenu, query=True, value=True)
+    logger.info('Selected camera: ' + str(selectedCam))
 
     # Clear the existing menu items
     cmds.optionMenu(cameraMenu, edit=True, deleteAllItems=True)
@@ -167,20 +151,10 @@ def populateCameraMenu():
     # If previously selected camera still exists, re-select it
     if selectedCam and cmds.objExists(selectedCam):
         cmds.optionMenu(cameraMenu, edit=True, value=selectedCam)
-    adjustingListSemaphore = False
     logger.info('Exiting populateCameraMenu function')
-
-def onCameraCreation(*args):
-    """ Callback function for the camera creation. """
-    logger.info('Entered onCameraCreation function')
-    populateCameraMenu()
-    onObjectChanged(None)
-    logger.info('Exiting onCameraCreation function')
 
 def populateObjectMenu():
     # Get currently selected menu item
-    global adjustingListSemaphore
-    adjustingListSemaphore = True
     logger.info('Entered populateObjectMenu function')
     selectedObj = cmds.optionMenu(objectMenu, query=True, value=True)
     logger.info('Selected object: ' + str(selectedObj))
@@ -202,15 +176,14 @@ def populateObjectMenu():
         # If previously selected object still exists, re-select it
         if selectedObj and cmds.objExists(selectedObj):
             cmds.optionMenu(objectMenu, edit=True, value=selectedObj)
-    adjustingListSemaphore = False
     logger.info('Exiting populateObjectMenu function')
 
-def onObjectCreation(*args):
-    """ Callback function for the object creation. """
-    logger.info('Entered onObjectCreation function')
+def refreshLists(*args):
+    """ Callback function for the refresh lists button click. """
+    logger.info('Entered refreshLists function')
+    populateCameraMenu()
     populateObjectMenu()
-    onObjectChanged(None)
-    logger.info('Exiting onObjectCreation function')
+    logger.info('Exiting refreshLists function')
 
 def onWindowClose(killOnClose=True):
     """ Callback function for window close. """
@@ -235,6 +208,8 @@ populateCameraMenu()
 cmds.text(label='Target Object:')
 objectMenu = cmds.optionMenu(changeCommand=onObjectChanged)
 populateObjectMenu()
+# Create the button
+refreshButton = cmds.button(label='Refresh Lists', command='refreshLists()')
 
 focalLockCheckbox = cmds.checkBox(label='Lock Focal Length', changeCommand=onFocalLockChanged)
 killOnCloseCheckbox = cmds.checkBox(label='Kill on Close', value=True)
@@ -244,9 +219,4 @@ cmds.showWindow(window)
 
 # Create a script job that triggers when the window is deleted
 cmds.scriptJob(uiDeleted=(window, onWindowClose))
-
-# Create a script job that triggers when a new object is created
-objectCreationJobId = cmds.scriptJob(e=("DagObjectCreated", onObjectCreation), protected=True)
-# Create a script job that triggers when a new camera is created
-cameraCreationJobId = cmds.scriptJob(e=("DagObjectCreated", onCameraCreation), protected=True)
 logging.info('SCRIPT INITIALIZED\n\n')
