@@ -106,7 +106,7 @@ def onObjectChanged(*args):
         computeFocalLengthRatio(cam, obj)
         if scriptJobId:
             cmds.scriptJob(kill=scriptJobId, force=True)
-            scriptJobId = cmds.scriptJob(e=("idle", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
+            scriptJobId = cmds.scriptJob(e=("timeChanged", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
     else:
         logger.warning("Invalid camera or object selected.")
             
@@ -124,7 +124,7 @@ def onFocalLockChanged(enabled):
             cmds.checkBox(focalLockCheckbox, edit=True, value=False)  # uncheck the checkbox
             return
         computeFocalLengthRatio(cam, obj)
-        scriptJobId = cmds.scriptJob(e=("idle", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
+        scriptJobId = cmds.scriptJob(e=("timeChanged", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
     else:
         # Kill the script job
         if scriptJobId:
