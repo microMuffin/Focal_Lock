@@ -10,21 +10,25 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-# Maintain a script job ID
-scriptJobId = None
-scriptJobId2 = None
-focalLengthRatio = 1.0
+# Initialize dictionary for all script job IDs
+scriptJobIds = {
+    'timeChange': None,
+    'playbackRangeChange': None,
+    'txChange': None,
+    'tyChange': None,
+    'tzChange': None
+}
 
-def cleanUpScriptJobIds():
-    logger.info('Entered cleanUpScriptJobIds function')
-    global scriptJobId, scriptJobId2
-    if scriptJobId is not None:
-        cmds.scriptJob(kill=scriptJobId, force=True)
-        scriptJobId = None
-    if scriptJobId2 is not None:
-        cmds.scriptJob(kill=scriptJobId2, force=True)
-        scriptJobId2 = None
-    logger.info('Exiting cleanUpScriptJobIds function')
+def cleanUptimeChangeJobIds():
+    logger.info('Entered cleanUptimeChangeJobIds function')
+    global scriptJobIds
+    for jobId in scriptJobIds:
+        if scriptJobIds[jobId] is not None:
+            cmds.scriptJob(kill=scriptJobIds[jobId], force=True)
+            scriptJobIds[jobId] = None
+    logger.info('Exiting cleanUptimeChangeJobIds function')
+
+
 
 # add these function to calculate the dot product and the forward vector
 def dotProduct(v1, v2):
@@ -75,7 +79,9 @@ def computeFocalLengthRatio(cam, obj):
     global focalLengthRatio
     focalLengthRatio = currentFocalLength / actualDist
 
-def maintainFocalLengthRatio(cam, obj):
+def maintainFocalLengthRatio():
+    cam = cmds.optionMenu(cameraMenu, query=True, value=True)
+    obj = cmds.optionMenu(objectMenu, query=True, value=True)
     if not cam or not obj:
         return
     if not cmds.objExists(cam) or not cmds.objExists(obj):
@@ -105,15 +111,18 @@ def maintainFocalLengthRatio(cam, obj):
 def onObjectChanged(*args):
     """ Callback function for the object dropdown menu change. """
     logger.info('Entered onObjectChanged function')
-    global scriptJobId, scriptJobId2
+    global scriptJobIds
     cam = cmds.optionMenu(cameraMenu, query=True, value=True)
     obj = cmds.optionMenu(objectMenu, query=True, value=True)
     if cam is not None and obj is not None and cmds.objExists(cam) and cmds.objExists(obj):
         computeFocalLengthRatio(cam, obj)
-        if scriptJobId or scriptJobId2:
-            cleanUpScriptJobIds()
-        scriptJobId = cmds.scriptJob(e=("timeChanged", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
-        scriptJobId2 = cmds.scriptJob(e=("playbackRangeChanged", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
+        if any(scriptJobIds.values()):  # if any script job is active
+            cleanUptimeChangeJobIds()
+        scriptJobIds['timeChange'] = cmds.scriptJob(e=("timeChanged", maintainFocalLengthRatio), protected=True)
+        scriptJobIds['playbackRangeChange'] = cmds.scriptJob(e=("playbackRangeChanged", maintainFocalLengthRatio), protected=True)
+        scriptJobIds['txChange'] = cmds.scriptJob(attributeChange=(cam + ".tx", maintainFocalLengthRatio), protected=True)
+        scriptJobIds['tyChange'] = cmds.scriptJob(attributeChange=(cam + ".ty", maintainFocalLengthRatio), protected=True)
+        scriptJobIds['tzChange'] = cmds.scriptJob(attributeChange=(cam + ".tz", maintainFocalLengthRatio), protected=True)
     else:
         logger.warning("Invalid camera or object selected.")
     logger.info('Exiting onObjectChanged function')
@@ -121,7 +130,7 @@ def onObjectChanged(*args):
 def onFocalLockChanged(enabled):
     """ Callback function for the focal lock checkbox change. """
     logger.info('Entered onFocalLockChanged function')
-    global scriptJobId, scriptJobId2
+    global scriptJobIds
     if enabled:
         cam = cmds.optionMenu(cameraMenu, query=True, value=True)
         obj = cmds.optionMenu(objectMenu, query=True, value=True)
@@ -130,12 +139,15 @@ def onFocalLockChanged(enabled):
             cmds.checkBox(focalLockCheckbox, edit=True, value=False)  # uncheck the checkbox
             return
         computeFocalLengthRatio(cam, obj)
-        scriptJobId = cmds.scriptJob(e=("timeChanged", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
-        scriptJobId2 = cmds.scriptJob(e=("playbackRangeChanged", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
+        scriptJobIds['timeChange'] = cmds.scriptJob(e=("timeChanged", maintainFocalLengthRatio), protected=True)
+        scriptJobIds['playbackRangeChange'] = cmds.scriptJob(e=("playbackRangeChanged", maintainFocalLengthRatio), protected=True)
+        scriptJobIds['txChange'] = cmds.scriptJob(attributeChange=(cam + ".tx", maintainFocalLengthRatio), protected=True)
+        scriptJobIds['tyChange'] = cmds.scriptJob(attributeChange=(cam + ".ty", maintainFocalLengthRatio), protected=True)
+        scriptJobIds['tzChange'] = cmds.scriptJob(attributeChange=(cam + ".tz", maintainFocalLengthRatio), protected=True)
     else:
         # Kill the script job
-        if scriptJobId or scriptJobId2:
-            cleanUpScriptJobIds()
+        if any(scriptJobIds.values()):
+            cleanUptimeChangeJobIds()
     logger.info('Exiting onFocalLockChanged function')
 
 def populateCameraMenu():
@@ -195,9 +207,9 @@ def refreshLists(*args):
 def onWindowClose(killOnClose=True):
     """ Callback function for window close. """
     logger.info('Entered onWindowClose function')
-    global scriptJobId
-    # if scriptJobId and cmds.control(killOnCloseCheckbox, exists=True) and cmds.checkBox(killOnCloseCheckbox, query=True, value=True): 
-    cleanUpScriptJobIds()
+    # global timeChangeJobId
+    # if timeChangeJobId and cmds.control(killOnCloseCheckbox, exists=True) and cmds.checkBox(killOnCloseCheckbox, query=True, value=True): 
+    cleanUptimeChangeJobIds()
     logger.info('Exiting onWindowClose function')
 
 # Create the window
