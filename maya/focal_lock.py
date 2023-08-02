@@ -24,10 +24,6 @@ def compute_distance_along_camera_forward_vector(camera_name, target_object_name
     camera_position = cmds.xform(camera_name, query=True, translation=True, worldSpace=True)
     camera_rotation = cmds.xform(camera_name, query=True, rotation=True, worldSpace=True)
 
-    print(f'Object Position: {object_position}')
-    print(f'Camera Position: {camera_position}')
-    print(f'Camera Rotation: {camera_rotation}')
-
     camera_forward_vector = computeForwardVector(camera_rotation)
 
     # Calculate the vector from the camera to the object
@@ -46,6 +42,10 @@ def add_focal_length_expression(camera_name, target_object_name):
 
     initial_focal_length = cmds.getAttr(camera_name + '.focalLength')
     initial_distance = compute_distance_along_camera_forward_vector(camera_transform_node, target_object_name)
+    if (initial_distance == 0):
+        # Report an error to the user
+        cmds.error("The selected objects do not have a distance between them. Please ensure that you have selected the camera's shape node and the object's transform node. Please also ensure that the camera and target object have distance between them.")
+        return
     focal_length_ratio = initial_focal_length / initial_distance
 
     expression_name = 'DistanceToFocalLengthExpression'
