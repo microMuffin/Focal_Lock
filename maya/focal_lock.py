@@ -78,7 +78,7 @@ def create_ui():
     if cmds.window('DistanceToFocalLengthUI', exists=True):
         cmds.deleteUI('DistanceToFocalLengthUI', window=True)
 
-    cmds.window('DistanceToFocalLengthUI', title='Distance to Focal Length', widthHeight=(300, 120))
+    cmds.window('DistanceToFocalLengthUI', title='Focal Lock', widthHeight=(300, 120))
     cmds.columnLayout(adjustableColumn=True)
 
     # Camera selection
@@ -88,16 +88,16 @@ def create_ui():
         cmds.menuItem(label=camera)
 
     # Object selection
-    cmds.text(label='Select an object:')
+    cmds.text(label='Select a target object:')
     object_option_menu = cmds.optionMenu()
     for obj in cmds.ls(type='transform'):
         cmds.menuItem(label=obj)
 
-    # Button to add expression
-    cmds.button(label='Add Expression', command=lambda *args: add_expression_btn_clicked(camera_option_menu, object_option_menu))
+    # Button to Add Focal Length Expression
+    cmds.button(label='Add Focal Length Expression', command=lambda *args: add_expression_btn_clicked(camera_option_menu, object_option_menu))
 
-    # Button to clear expression
-    cmds.button(label='Clear Expression', command=lambda *args: clear_expression_btn_clicked(camera_option_menu))
+    # Button to Remove Focal Length Expression
+    cmds.button(label='Remove Focal Length Expression', command=lambda *args: clear_expression_btn_clicked(camera_option_menu))
 
     cmds.showWindow('DistanceToFocalLengthUI')
 
