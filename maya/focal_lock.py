@@ -94,10 +94,10 @@ def create_ui():
         cmds.menuItem(label=obj)
 
     # Button to Add Focal Length Expression
-    cmds.button(label='Add Focal Length Expression', command=lambda *args: add_expression_btn_clicked(camera_option_menu, object_option_menu))
+    cmds.button(label='Add Focal Length Expression to Camera', command=lambda *args: add_expression_btn_clicked(camera_option_menu, object_option_menu))
 
     # Button to Remove Focal Length Expression
-    cmds.button(label='Remove Focal Length Expression', command=lambda *args: clear_expression_btn_clicked(camera_option_menu))
+    cmds.button(label='Remove Focal Length Expression from Camera', command=lambda *args: clear_expression_btn_clicked(camera_option_menu))
 
     cmds.showWindow('DistanceToFocalLengthUI')
 
