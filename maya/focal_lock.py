@@ -1,14 +1,8 @@
 import maya.cmds as cmds
 import math
 
-# Maintain a script job ID
-scriptJobId = None
-objectCreationJobId = None
-cameraCreationJobId = None
-focalLengthRatio = 1.0
-adjustingListSemaphore = False
+focal_length_ratio = None
 
-# add these function to calculate the dot product and the forward vector
 def dotProduct(v1, v2):
     return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]
 
@@ -25,177 +19,97 @@ def computeForwardVector(rotation):
 
     return forwardVector
 
-def computeFocalLengthRatio(cam, obj):
-    if not cam or not obj:
+def compute_distance_along_camera_forward_vector(camera_name, target_object_name):
+    object_position = cmds.xform(target_object_name, query=True, translation=True, worldSpace=True)
+    camera_position = cmds.xform(camera_name, query=True, translation=True, worldSpace=True)
+    camera_rotation = cmds.xform(camera_name, query=True, rotation=True, worldSpace=True)
+
+    camera_forward_vector = computeForwardVector(camera_rotation)
+
+    # Calculate the vector from the camera to the object
+    camera_to_object_vector = [object_position[0] - camera_position[0], object_position[1] - camera_position[1], object_position[2] - camera_position[2]]
+
+    # Calculate the distance along the camera's forward vector
+    distance = dotProduct(camera_to_object_vector, camera_forward_vector)
+
+    return distance
+
+def add_focal_length_expression(camera_name, target_object_name):
+    global focal_length_ratio
+
+    # Get the transform node associated with the camera
+    camera_transform_node = cmds.listRelatives(camera_name, parent=True, fullPath=True)[0]
+
+    initial_focal_length = cmds.getAttr(camera_name + '.focalLength')
+    initial_distance = compute_distance_along_camera_forward_vector(camera_transform_node, target_object_name)
+    if (initial_distance == 0):
+        # Report an error to the user
+        cmds.error("The selected objects do not have a distance between them. Please ensure that you have selected the camera's shape node and the object's transform node. Please also ensure that the camera and target object have distance between them.")
         return
-    if not cmds.objExists(cam) or not cmds.objExists(obj):
-        print("Camera or object does not exist.")
-        return
+    focal_length_ratio = initial_focal_length / initial_distance
 
-    # get current position of obj
-    objPos = cmds.xform(obj, q=True, t=True, ws=True)
+    expression_name = 'DistanceToFocalLengthExpression'
 
-    # get current position and rotation of camera
-    camPos = cmds.xform(cam, q=True, t=True, ws=True)
-    camRot = cmds.xform(cam, q=True, rotation=True)
+    expression_string = f"""
+    float $distance = pow(pow(({camera_transform_node}.translateX - {target_object_name}.translateX), 2.0) + 
+                         pow(({camera_transform_node}.translateY - {target_object_name}.translateY), 2.0) + 
+                         pow(({camera_transform_node}.translateZ - {target_object_name}.translateZ), 2.0), 0.5);
 
-    # calculate the forward direction vector of the camera
-    forwardVector = computeForwardVector(camRot)
+    // Store initial focal length and distance when the expression is created
+    // Calculate updated focal length based on the initial ratio
+    {camera_name}.focalLength = $distance * {focal_length_ratio};
+    """
 
-    # calculate vector from cam to obj
-    vec = [objPos[0] - camPos[0], objPos[1] - camPos[1], objPos[2] - camPos[2]]
+    # Check if the expression already exists and delete it if it does
+    if expression_name in cmds.ls(type='expression'):
+        cmds.delete(expression_name)
 
-    # calculate the dot product of vec and forwardVector
-    print(vec)
-    print(forwardVector)
-    actualDist = dotProduct(vec, forwardVector)
+    # Create the expression
+    cmds.expression(name=expression_name, string=expression_string)
 
-    # get the current camera's focal length
-    currentFocalLength = cmds.getAttr(cam + '.focalLength')
+def clear_focal_length_expression(camera_name):
+    expression_name = 'DistanceToFocalLengthExpression'
 
-    # calculate the focal length ratio
-    global focalLengthRatio
-    focalLengthRatio = currentFocalLength / actualDist
+    # Check if the expression exists and delete it if it does
+    if expression_name in cmds.ls(type='expression'):
+        cmds.delete(expression_name)
 
-def maintainFocalLengthRatio(cam, obj):
-    if not cam or not obj:
-        return
-    if not cmds.objExists(cam) or not cmds.objExists(obj):
-        print("Camera or object does not exist.")
-        return
+def create_ui():
+    if cmds.window('DistanceToFocalLengthUI', exists=True):
+        cmds.deleteUI('DistanceToFocalLengthUI', window=True)
 
-    # get current position of obj
-    objPos = cmds.xform(obj, q=True, t=True, ws=True)
+    cmds.window('DistanceToFocalLengthUI', title='Focal Lock', widthHeight=(300, 120))
+    cmds.columnLayout(adjustableColumn=True)
 
-    # get current position and rotation of camera
-    camPos = cmds.xform(cam, q=True, t=True, ws=True)
-    camRot = cmds.xform(cam, q=True, rotation=True)
+    # Camera selection
+    cmds.text(label='Select a camera:')
+    camera_option_menu = cmds.optionMenu()
+    for camera in cmds.ls(type='camera'):
+        cmds.menuItem(label=camera)
 
-    # calculate the forward direction vector of the camera
-    forwardVector = computeForwardVector(camRot)
+    # Object selection
+    cmds.text(label='Select a target object:')
+    object_option_menu = cmds.optionMenu()
+    for obj in cmds.ls(type='transform'):
+        cmds.menuItem(label=obj)
 
-    # calculate vector from cam to obj
-    vec = [objPos[0] - camPos[0], objPos[1] - camPos[1], objPos[2] - camPos[2]]
+    # Button to Add Focal Length Expression
+    cmds.button(label='Add Focal Length Expression to Camera', command=lambda *args: add_expression_btn_clicked(camera_option_menu, object_option_menu))
 
-    # calculate the dot product of vec and forwardVector
-    actualDist = dotProduct(vec, forwardVector)
+    # Button to Remove Focal Length Expression
+    cmds.button(label='Remove Focal Length Expression from Camera', command=lambda *args: clear_expression_btn_clicked(camera_option_menu))
 
-    # adjust camera focal length based on the distance and the desired ratio
-    newFocalLength = actualDist * focalLengthRatio
-    cmds.setAttr(cam + '.focalLength', newFocalLength)
+    cmds.showWindow('DistanceToFocalLengthUI')
 
-def onObjectChanged(*args):
-    """ Callback function for the object dropdown menu change. """
-    global scriptJobId
-    cam = cmds.optionMenu(cameraMenu, query=True, value=True)
-    obj = cmds.optionMenu(objectMenu, query=True, value=True)
-    computeFocalLengthRatio(cam, obj)
-    if scriptJobId:
-        cmds.scriptJob(kill=scriptJobId, force=True)
-        scriptJobId = cmds.scriptJob(e=("idle", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
+def add_expression_btn_clicked(camera_option_menu, object_option_menu):
+    selected_camera = cmds.optionMenu(camera_option_menu, query=True, value=True)
+    selected_object = cmds.optionMenu(object_option_menu, query=True, value=True)
 
-def onFocalLockChanged(enabled):
-    """ Callback function for the focal lock checkbox change. """
-    global scriptJobId
-    if enabled:
-        cam = cmds.optionMenu(cameraMenu, query=True, value=True)
-        obj = cmds.optionMenu(objectMenu, query=True, value=True)
-        if not cam or not obj or not cmds.objExists(cam) or not cmds.objExists(obj):
-            cmds.warning("Invalid camera or object selected.")
-            cmds.checkBox(focalLockCheckbox, edit=True, value=False)  # uncheck the checkbox
-            return
-        computeFocalLengthRatio(cam, obj)
-        scriptJobId = cmds.scriptJob(e=("idle", lambda: maintainFocalLengthRatio(cam, obj)), protected=True)
-    else:
-        # Kill the script job
-        if scriptJobId:
-            cmds.scriptJob(kill=scriptJobId, force=True)
-            scriptJobId = None
+    add_focal_length_expression(selected_camera, selected_object)
 
-def populateCameraMenu():
-    # Get currently selected menu item
-    selectedCam = cmds.optionMenu(cameraMenu, query=True, value=True)
+def clear_expression_btn_clicked(camera_option_menu):
+    selected_camera = cmds.optionMenu(camera_option_menu, query=True, value=True)
 
-    # Clear the existing menu items
-    cmds.optionMenu(cameraMenu, edit=True, deleteAllItems=True)
+    clear_focal_length_expression(selected_camera)
 
-    # Get list of new cameras
-    cameraShapeList = cmds.ls(cameras=True)
-    cameraList = cmds.listRelatives(cameraShapeList, parent=True)
-
-    # Add new cameras to menu
-    for cam in cameraList:
-        cmds.menuItem(label=cam)
-
-    # If previously selected camera still exists, re-select it
-    if selectedCam and cmds.objExists(selectedCam):
-        cmds.optionMenu(cameraMenu, edit=True, value=selectedCam)
-
-def onCameraCreation(*args):
-    """ Callback function for the camera creation. """
-    populateCameraMenu()
-    onObjectChanged(None)
-
-def populateObjectMenu():
-    # Get currently selected menu item
-    selectedObj = cmds.optionMenu(objectMenu, query=True, value=True)
-
-    # Clear the existing menu items
-    cmds.optionMenu(objectMenu, edit=True, deleteAllItems=True)
-    print("All objects deleted from list!")
-
-    # Get list of new objects
-    shapeNodes = cmds.ls(dag=True, leaf=True, noIntermediate=True, shapes=True)
-    shapeNodes = [shapeNode for shapeNode in shapeNodes if shapeNode not in cameraShapeList] # Exclude cameras from the list
-    transformNodes = cmds.listRelatives(shapeNodes, parent=True, fullPath=True) # Get parent transform nodes
-
-    # Add new objects to menu
-    for node in transformNodes:
-        cmds.menuItem(label=node)
-
-    # If previously selected object still exists, re-select it
-    if selectedObj and cmds.objExists(selectedObj):
-        cmds.optionMenu(objectMenu, edit=True, value=selectedObj)
-
-def onObjectCreation(*args):
-    """ Callback function for the object creation. """
-    populateObjectMenu()
-    onObjectChanged(None)
-
-def onWindowClose(killOnClose=True):
-    """ Callback function for window close. """
-    global scriptJobId
-    if scriptJobId and cmds.control(killOnCloseCheckbox, exists=True) and cmds.checkBox(killOnCloseCheckbox, query=True, value=True): 
-        # Kill the script job
-        cmds.scriptJob(kill=scriptJobId, force=True)
-        scriptJobId = None
-
-# Create the window
-window = cmds.window(title="Focal Lock", widthHeight=(200, 100))
-cmds.columnLayout(adjustableColumn=True)
-
-cameraShapeList = cmds.ls(cameras=True)
-cameraList = cmds.listRelatives(cameraShapeList, parent=True)
-
-# Create the user interface elements
-cmds.text(label='Camera:')
-cameraMenu = cmds.optionMenu(changeCommand=onObjectChanged)
-populateCameraMenu()
-
-cmds.text(label='Target Object:')
-objectMenu = cmds.optionMenu(changeCommand=onObjectChanged)
-populateObjectMenu()
-
-focalLockCheckbox = cmds.checkBox(label='Lock Focal Length', changeCommand=onFocalLockChanged)
-killOnCloseCheckbox = cmds.checkBox(label='Kill on Close', value=True)
-
-# Show the window
-cmds.showWindow(window)
-
-# Create a script job that triggers when the window is deleted
-cmds.scriptJob(uiDeleted=(window, onWindowClose))
-
-# Create a script job that triggers when a new object is created
-objectCreationJobId = cmds.scriptJob(e=("DagObjectCreated", onObjectCreation), protected=True)
-# Create a script job that triggers when a new camera is created
-cameraCreationJobId = cmds.scriptJob(e=("DagObjectCreated", onCameraCreation), protected=True)
+create_ui()
