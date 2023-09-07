@@ -36,12 +36,12 @@ def compute_distance_along_camera_forward_vector(camera_name, target_object_name
     camera_forward_vector = computeForwardVector(camera_rotation)
 
     # Calculate the vector from the camera to the object
-    camera_to_object_vector = [object_position[0] - camera_position[0], object_position[1] - camera_position[1], object_position[2] - camera_position[2]]
+    camera_to_object_vector = subtractVector(object_position, camera_position)
 
     # Calculate the distance along the camera's forward vector
     distance = dotProduct(camera_to_object_vector, camera_forward_vector)
 
-    return distance, camera_forward_vector
+    return distance
 
 def add_focal_length_expression(camera_name, target_object_name):
     global focal_length_ratio
@@ -50,7 +50,7 @@ def add_focal_length_expression(camera_name, target_object_name):
     camera_transform_node = cmds.listRelatives(camera_name, parent=True, fullPath=True)[0]
 
     initial_focal_length = cmds.getAttr(camera_name + '.focalLength')
-    initial_distance, camera_forward_vector = compute_distance_along_camera_forward_vector(camera_transform_node, target_object_name)
+    initial_distance = compute_distance_along_camera_forward_vector(camera_transform_node, target_object_name)
 
     if (initial_distance == 0):
         # Report an error to the user
@@ -66,9 +66,12 @@ def add_focal_length_expression(camera_name, target_object_name):
     #                      pow(({camera_transform_node}.translateZ - {target_object_name}.translateZ), 2.0), 0.5);
 
     expression_string = f"""
-    float $camera_forward_vector_x = {camera_forward_vector[0]};
-    float $camera_forward_vector_y = {camera_forward_vector[1]};
-    float $camera_forward_vector_z = {camera_forward_vector[2]};
+    string $camera_transform_node = "cameraShape1"; // "{camera_transform_node}"; 
+
+    float $camera_forward_vector[] = `xform -q -ws -m $camera_transform_node`;
+    float $camera_forward_vector_x = $camera_forward_vector[0];
+    float $camera_forward_vector_y = $camera_forward_vector[1];
+    float $camera_forward_vector_z = $camera_forward_vector[2];
 
     float $camera_to_object_vector_x = {camera_transform_node}.translateX - {target_object_name}.translateX;
     float $camera_to_object_vector_y = {camera_transform_node}.translateY - {target_object_name}.translateY;
