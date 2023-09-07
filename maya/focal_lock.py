@@ -60,29 +60,16 @@ def add_focal_length_expression(camera_name, target_object_name):
 
     expression_name = 'DistanceToFocalLengthExpression'
 
-    # Distance was computed this way but now needs to be computed as a dot product with the camera forward vector
-    # float $distance = pow(pow(({camera_transform_node}.translateX - {target_object_name}.translateX), 2.0) + 
-    #                      pow(({camera_transform_node}.translateY - {target_object_name}.translateY), 2.0) + 
-    #                      pow(({camera_transform_node}.translateZ - {target_object_name}.translateZ), 2.0), 0.5);
-
     expression_string = f"""
-    string $camera_transform_node = "cameraShape1"; // "{camera_transform_node}"; 
-
-    float $camera_forward_vector[] = `xform -q -ws -m $camera_transform_node`;
-    float $camera_forward_vector_x = $camera_forward_vector[0];
-    float $camera_forward_vector_y = $camera_forward_vector[1];
-    float $camera_forward_vector_z = $camera_forward_vector[2];
-
-    float $camera_to_object_vector_x = {camera_transform_node}.translateX - {target_object_name}.translateX;
-    float $camera_to_object_vector_y = {camera_transform_node}.translateY - {target_object_name}.translateY;
-    float $camera_to_object_vector_z = {camera_transform_node}.translateZ - {target_object_name}.translateZ;
-
-    float $distance = $camera_to_object_vector_x * $camera_forward_vector_x + $camera_to_object_vector_y * $camera_forward_vector_y + $camera_to_object_vector_z * $camera_forward_vector_z;
+    float $distance = pow(pow(({camera_transform_node}.translateX - {target_object_name}.translateX), 2.0) + 
+                         pow(({camera_transform_node}.translateY - {target_object_name}.translateY), 2.0) + 
+                         pow(({camera_transform_node}.translateZ - {target_object_name}.translateZ), 2.0), 0.5);
 
     // Store initial focal length and distance when the expression is created
     // Calculate updated focal length based on the initial ratio
     {camera_name}.focalLength = $distance * {focal_length_ratio};
     """
+
 
     # Check if the expression already exists and delete it if it does
     if expression_name in cmds.ls(type='expression'):
