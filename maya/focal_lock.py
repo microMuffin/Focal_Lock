@@ -9,6 +9,10 @@ def dotProduct(v1, v2):
 def subtractVector(v1, v2):
     return [v1[0]-v2[0], v1[1]-v2[1], v1[2]-v2[2]]
 
+def normalize(v):
+    vector_length = math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
+    return [v[0]/vector_length, v[1]/vector_length, v[2]/vector_length]
+
 def computeForwardVector(rotation):
     # Convert the rotation to radians
     rotation = [math.radians(x) for x in rotation]
@@ -19,6 +23,8 @@ def computeForwardVector(rotation):
         math.sin(rotation[0]), 
         -math.cos(rotation[1])*math.cos(rotation[0])
     ]
+
+    forwardVector = normalize(forwardVector)
 
     return forwardVector
 
@@ -35,7 +41,7 @@ def compute_distance_along_camera_forward_vector(camera_name, target_object_name
     # Calculate the distance along the camera's forward vector
     distance = dotProduct(camera_to_object_vector, camera_forward_vector)
 
-    return distance
+    return distance, camera_forward_vector
 
 def add_focal_length_expression(camera_name, target_object_name):
     global focal_length_ratio
@@ -44,7 +50,8 @@ def add_focal_length_expression(camera_name, target_object_name):
     camera_transform_node = cmds.listRelatives(camera_name, parent=True, fullPath=True)[0]
 
     initial_focal_length = cmds.getAttr(camera_name + '.focalLength')
-    initial_distance = compute_distance_along_camera_forward_vector(camera_transform_node, target_object_name)
+    initial_distance, camera_forward_vector = compute_distance_along_camera_forward_vector(camera_transform_node, target_object_name)
+
     if (initial_distance == 0):
         # Report an error to the user
         cmds.error("The selected objects do not have a distance between them. Please ensure that you have selected the camera's shape node and the object's transform node. Please also ensure that the camera and target object have distance between them.")
@@ -53,10 +60,21 @@ def add_focal_length_expression(camera_name, target_object_name):
 
     expression_name = 'DistanceToFocalLengthExpression'
 
+    # Distance was computed this way but now needs to be computed as a dot product with the camera forward vector
+    # float $distance = pow(pow(({camera_transform_node}.translateX - {target_object_name}.translateX), 2.0) + 
+    #                      pow(({camera_transform_node}.translateY - {target_object_name}.translateY), 2.0) + 
+    #                      pow(({camera_transform_node}.translateZ - {target_object_name}.translateZ), 2.0), 0.5);
+
     expression_string = f"""
-    float $distance = pow(pow(({camera_transform_node}.translateX - {target_object_name}.translateX), 2.0) + 
-                         pow(({camera_transform_node}.translateY - {target_object_name}.translateY), 2.0) + 
-                         pow(({camera_transform_node}.translateZ - {target_object_name}.translateZ), 2.0), 0.5);
+    float $camera_forward_vector_x = {camera_forward_vector[0]};
+    float $camera_forward_vector_y = {camera_forward_vector[1]};
+    float $camera_forward_vector_z = {camera_forward_vector[2]};
+
+    float $camera_to_object_vector_x = {camera_transform_node}.translateX - {target_object_name}.translateX;
+    float $camera_to_object_vector_y = {camera_transform_node}.translateY - {target_object_name}.translateY;
+    float $camera_to_object_vector_z = {camera_transform_node}.translateZ - {target_object_name}.translateZ;
+
+    float $distance = $camera_to_object_vector_x * $camera_forward_vector_x + $camera_to_object_vector_y * $camera_forward_vector_y + $camera_to_object_vector_z * $camera_forward_vector_z;
 
     // Store initial focal length and distance when the expression is created
     // Calculate updated focal length based on the initial ratio
