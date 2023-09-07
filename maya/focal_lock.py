@@ -6,6 +6,9 @@ focal_length_ratio = None
 def dotProduct(v1, v2):
     return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]
 
+def subtractVector(v1, v2):
+    return [v1[0]-v2[0], v1[1]-v2[1], v1[2]-v2[2]]
+
 def computeForwardVector(rotation):
     # Convert the rotation to radians
     rotation = [math.radians(x) for x in rotation]
