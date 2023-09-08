@@ -17,5 +17,7 @@ See promotion video here: [https://youtu.be/db8TEAO8qDM](https://youtu.be/VHoSQl
 
 ## Tutorials
 Blender Tutorial: https://youtu.be/X7bpxxFTXoE
+
 Maya Tutorial: https://youtu.be/GF0rJMnmFkk
+
 Houdini Tutorial: https://youtu.be/mEriAAHTdyc
