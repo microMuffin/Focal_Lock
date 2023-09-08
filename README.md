@@ -21,4 +21,4 @@ See promotion video here: [https://youtu.be/db8TEAO8qDM](https://youtu.be/VHoSQl
 * Houdini Tutorial: https://youtu.be/mEriAAHTdyc
 
 ## Support the future of microMuffin development
-Donate [here]([url](https://www.paypal.com/donate/?business=NCWANDTGURHPL&no_recurring=0&item_name=microMuffin+employee%2C+principal+creator+of+Focal+Lock&currency_code=USD)https://www.paypal.com/donate/?business=NCWANDTGURHPL&no_recurring=0&item_name=microMuffin+employee%2C+principal+creator+of+Focal+Lock&currency_code=USD)
+Donate [here](https://www.paypal.com/donate/?business=NCWANDTGURHPL&no_recurring=0&item_name=microMuffin+employee%2C+principal+creator+of+Focal+Lock&currency_code=USD)
