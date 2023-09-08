@@ -1,8 +1,19 @@
 # Focal Lock
 Addon for Blender to maintain a camera's focal length/distance ratio.
 
-See promotion video here: https://youtu.be/db8TEAO8qDM
+## Download
+Navigate to the releases panel on the right side of the GitHub:
+<img width="250" alt="image" src="https://github.com/microMuffin/Focal_Lock/assets/12112399/cb054ecb-e07e-480c-8386-921e80a56972">
 
-See a video explaining how to use it here: https://www.youtube.com/watch?v=6pBx33feU4c&lc=UgyskxmQ_82Gvtjy8gp4AaABAg
+Then, download the script (or HDA for Houdini) that corresponds with your DCC:
+<img width="312" alt="image" src="https://github.com/microMuffin/Focal_Lock/assets/12112399/8f9136fa-2cd6-4c18-99e0-5536536c2a24">
 
-Only Blender version is currently supported. To download the latest Blender Python file, see the "Releases" panel.
+
+## Promotion Video
+See promotion video here: [https://youtu.be/db8TEAO8qDM](https://youtu.be/VHoSQlY0TX0?si=PaSPxIahDbLH9zml)
+
+
+## Tutorials
+Blender Tutorial: https://youtu.be/X7bpxxFTXoE
+Maya Tutorial: https://youtu.be/GF0rJMnmFkk
+Houdini Tutorial: https://youtu.be/mEriAAHTdyc
